@@ -16,6 +16,9 @@ on:
       tag:
         description: 'The tag you want to repackage'
         required: true
+      quay_user:
+        description: 'The username or organization for the image'
+        required: true
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
@@ -27,5 +30,43 @@ jobs:
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
     # Runs a single command using the runners shell
-    - name: Send greeting
-      run: echo "Hello ${{ github.event.inputs.repository }}:${{ github.event.inputs.tag }}"
+    - name: Checkout
+      uses: actions/checkout@v2.3.4
+      with:
+        repository: "${{ github.event.inputs.repository }}"
+        ref: "${{ github.event.inputs.tag }}"
+    
+    - uses: actions/setup-go@v1
+      with:
+        go-version: '1.15' # The Go version to download (if necessary) and use.
+    
+    - name: install yq
+      run: |
+        sudo snap install yq
+    
+    - name: Pull/formats utils directory
+      run: |
+        git clone https://github.com/krishchow/olm-repackage.git .work
+        sed -i "s|MODPATH|$module|g" .work/main.go
+        cp -r .work/* .
+      env:
+        module: "${{ github.event.inputs.repository }}"
+      
+    - name: Login to Quay.io
+      uses: docker/login-action@v1
+      with:
+        logout: true
+        registry: quay.io
+        username: ${{ secrets.QUAY_USERNAME }}
+        password: ${{ secrets.QUAY_TOKEN }}       
+      
+    - name: Build operator
+      run: |
+        IMAGE=`echo "$REPO" | awk '{split($0,a,"/"); print a[2]}'`
+        OPERATOR_IMG="quay.io/$USERNAME/$IMAGE:$TAG"
+        make docker-build docker-push IMG=$OPERATOR_IMG
+      env:
+        USERNAME: "${{ github.event.inputs.quay_user }}"
+        TAG: "${{ github.event.inputs.tag }}"
+        REPO: "${{ github.event.inputs.repository }}"
+      
