@@ -23,7 +23,7 @@ on:
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
   # This workflow contains a single job called "greet"
-  greet:
+  repackage:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
 
@@ -40,14 +40,18 @@ jobs:
       with:
         go-version: '1.15' # The Go version to download (if necessary) and use.
     
-    - name: install yq
+    - name: install dependencies
       run: |
         sudo snap install yq
-    
+        export ARCH=$(case $(arch) in x86_64) echo -n amd64 ;; aarch64) echo -n arm64 ;; *) echo -n $(arch) ;; esac)
+        export OS=$(uname | awk '{print tolower($0)}')
+        export OPERATOR_SDK_DL_URL=https://github.com/operator-framework/operator-sdk/releases/latest/download
+        curl -LO ${OPERATOR_SDK_DL_URL}/operator-sdk_${OS}_${ARCH}
+        chmod +x operator-sdk_${OS}_${ARCH} && sudo mv operator-sdk_${OS}_${ARCH} /usr/local/bin/operator-sdk
+
     - name: Pull/formats utils directory
       run: |
         git clone https://github.com/krishchow/olm-repackage.git .work
-        sed -i "s|MODPATH|$module|g" .work/main.go
         cp -r .work/* .
       env:
         module: "${{ github.event.inputs.repository }}"
@@ -69,4 +73,19 @@ jobs:
         USERNAME: "${{ github.event.inputs.quay_user }}"
         TAG: "${{ github.event.inputs.tag }}"
         REPO: "${{ github.event.inputs.repository }}"
-      
+
+    - name: Build bundle
+      run: |
+        IMAGE=`echo "$REPO" | awk '{split($0,a,"/"); print a[2]}'`
+        OPERATOR_IMG="quay.io/$USERNAME/$IMAGE:$TAG"
+        ./gen_project.sh > PROJECT
+        sed -i "s|IMAGE|$IMAGE|g" PROJECT
+        sed -i "s|REPO|$REPO|g" PROJECT
+        make bundle IMG=$OPERATOR_IMG
+        export BUNDLE_IMG="quay.io/$USERNAME/$IMAGE-bundle:$TAG"
+        make bundle-build BUNDLE_IMG=$BUNDLE_IMG
+        make docker-push IMG=$BUNDLE_IMG
+      env:
+        USERNAME: "${{ github.event.inputs.quay_user }}"
+        TAG: "${{ github.event.inputs.tag }}"
+        REPO: "${{ github.event.inputs.repository }}"
