@@ -51,7 +51,7 @@ jobs:
 
     - name: Pull/formats utils directory
       run: |
-        git clone https://github.com/krishchow/olm-repackage.git .work
+        git clone https://github.com/redhat-et/olm-repackage.git .work
         cp -r .work/* .
       env:
         module: "${{ github.event.inputs.repository }}"
