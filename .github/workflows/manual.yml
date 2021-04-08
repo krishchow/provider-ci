@@ -75,15 +75,13 @@ jobs:
 
     - name: Build bundle
       run: |
-        IMAGE=`echo "$REPO" | awk '{split($0,a,"/"); print a[2]}'`
+        export IMAGE=`echo "$REPO" | awk '{split($0,a,"/"); print a[2]}'`
         OPERATOR_IMG="quay.io/$USERNAME/$IMAGE:$TAG"
         ./gen_project.sh > PROJECT
-        sed -i "s|IMAGE|$IMAGE|g" PROJECT
-        sed -i "s|REPO|$REPO|g" PROJECT
-        sed -i "s|IMAGE|$IMAGE|g" csv.yaml
-        sed -i "s|REPO|$REPO|g" csv.yaml
-        sed -i "s|TAG|$TAG|g" csv.yaml
-        mv csv.yaml "config/manifests/bases/$IMAGE.clusterserviceversion.yaml"
+        find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|IMAGE|$IMAGE|g"
+        find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|REPO|$REPO|g"
+        find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|TAG|$TAG|g"
+        mv config/manifests/bases/IMAGE.clusterserviceversion.yaml config/manifests/bases/$IMAGE.clusterserviceversion.yaml
         make bundle IMG=$OPERATOR_IMG
         export BUNDLE_IMG="quay.io/$USERNAME/$IMAGE-bundle:$TAG"
         make bundle-build BUNDLE_IMG=$BUNDLE_IMG
