@@ -22,7 +22,6 @@ on:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
 jobs:
-  # This workflow contains a single job called "greet"
   repackage:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
@@ -81,6 +80,10 @@ jobs:
         ./gen_project.sh > PROJECT
         sed -i "s|IMAGE|$IMAGE|g" PROJECT
         sed -i "s|REPO|$REPO|g" PROJECT
+        sed -i "s|IMAGE|$IMAGE|g" csv.yaml
+        sed -i "s|REPO|$REPO|g" csv.yaml
+        sed -i "s|TAG|$TAG|g" csv.yaml
+        mv csv.yaml "config/manifests/bases/$IMAGE.clusterserviceversion.yaml"
         make bundle IMG=$OPERATOR_IMG
         export BUNDLE_IMG="quay.io/$USERNAME/$IMAGE-bundle:$TAG"
         make bundle-build BUNDLE_IMG=$BUNDLE_IMG
