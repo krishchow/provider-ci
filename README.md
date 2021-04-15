@@ -1,5 +1,18 @@
 # provider-ci
 
+## Input
+
+This action accepts three inputs:
+
+- The GitHub repository for the provider. Ex., `crossplane/provider-aws`
+- The commit reference targeted for repackaging. Ex., `v0.17.0`
+- The quay.io user which is the destination for the Docker images. Ex., `krishchow`
+
+Additonally, have two configured secrets, which contain:
+
+- `QUAY_TOKEN` - the token for the quay.io robot account.
+- `QUAY_USERNAME` - the username for the quay.io robot account.
+
 ## Steps
 
 1. Checkout: We first checkout the target provider Github repository.
