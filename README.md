@@ -29,6 +29,26 @@ Additonally, have two configured secrets, which contain:
     4. Create our ClusterServiceVersion
     5. Build and push the Bundle image
 
+### An example
+
+If we wanted to go through repackaging manually for the `provider-aws`.
+
+1. We checkout our target repository, in this case, that would be `git clone https://github.com/crossplane/provider-aws`.
+2. Then, we would need to verify that we have Go, `operator-sdk`, `yq` and Docker or podman. Additonally, we will need credentials setup for a container registry.
+3. Next, we will need to clone the olm-repackage repository: `git clone https://github.com/redhat-et/olm-repackage .work`. We then will copy the contents of this `.work` folder into our `provider-aws` folder.
+4. Now we can build our OLM operator, but first we need to define our image tag `OPERATOR_IMG="quay.io/krishchow/provider-aws:master"`, then we can run `make docker-build docker-push IMG=$OPERATOR_IMG`.
+    1. This will build all of our manifests, run code generation, and build/push the OCI image.
+5. The last step involves building the bundle for our operator. We can run `./gen_project.sh > PROJECT` to create our project file, then we will template various field into manifests, by running:
+   - `find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|IMAGE|$IMAGE|g"`
+   - `find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|REPO|$REPO|g"`
+   - `find config \( -type d -name .git -prune \) -o -type f | xargs sed -i "s|TAG|$TAG|g"`
+    Where `IMAGE=provider-aws`, `REPO=crossplane/provider-aws` and `TAG=master`.
+6. Then, we need to correctly name the ClusterServiceVersion (csv) by running, `mv config/manifests/bases/IMAGE.clusterserviceversion.yaml config/manifests/bases/$IMAGE.clusterserviceversion.yaml`
+7. We can now proceed with create the bundle: `make bundle IMG=$OPERATOR_IMG`, then we can set our bundle image, in this case I selected, `BUNDLE_IMG="quay.io/krishchow/provider-aws-bundle:master"`.
+8. Last, we can build and push the OCI image with:
+    - `make bundle-build BUNDLE_IMG=$BUNDLE_IMG`
+    - `make docker-push IMG=$BUNDLE_IMG`
+
 ## Running the Operator
 
 ### Operator-SDK CLI
